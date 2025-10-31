@@ -1,0 +1,2489 @@
+// import { useTonConnectUI } from '@tonconnect/ui-react';
+// import { toUserFriendlyAddress } from '@tonconnect/sdk';
+// import { FC, useState, useEffect, useRef } from 'react';
+// import { FaCoins, FaUsers, FaWallet, FaTrophy } from 'react-icons/fa';
+// import { BiNetworkChart } from 'react-icons/bi';
+// import { RiSafeLine } from 'react-icons/ri';
+// import { useAuth } from '@/hooks/useAuth';
+// import { supabase } from '@/lib/supabaseClient';
+// import { getTONPrice } from '@/lib/api';
+// import GMPLeaderboard from '@/components/GMPLeaderboard';
+// import { OnboardingScreen } from './OnboardingScreen';
+// import { toNano, fromNano } from "ton";
+// import TonWeb from 'tonweb';
+// import { Button } from '@telegram-apps/telegram-ui';
+// import { Snackbar } from '@telegram-apps/telegram-ui';
+// import ReferralSystem from '@/components/ReferralSystem';
+// import { WithdrawalInfoModal } from '@/components/WithdrawalInfoModal';
+// import TonWallet from '@/components/TonWallet';
+// import { MiningSection } from '@/components/MiningSection/MiningSection';
+// import { LotteryCard } from '@/components/LotteryCard/LotteryCard';
+
+
+// interface StatsCardProps {
+//   title: string;
+//   value: string | number;
+//   subValue?: string;
+//   icon: JSX.Element;
+//   bgColor: string;
+//   className?: string;
+// }
+
+// const StatsCard: FC<StatsCardProps> = ({ title, value, subValue, icon, bgColor, className }) => (
+//   <div className={`bg-white rounded-xl p-4 border border-blue-200 shadow-sm ${className}`}>
+//     <div className="flex items-center gap-4">
+//       <div className={`${bgColor} p-2.5 rounded-lg flex-shrink-0 bg-opacity-10`}>
+//         {icon}
+//       </div>
+//       <div className="min-w-0">
+//         <p className="text-xs text-gray-600">{title}</p>
+//         <p className="text-sm font-semibold text-gray-900 mt-1 truncate">{value}</p>
+//         {subValue && <p className="text-[10px] text-gray-500 mt-0.5">{subValue}</p>}
+//       </div>
+//     </div>
+//   </div>
+// );
+
+// // Update the renderROIStats function
+// const renderROIStats = (currentROI: number) => {
+//   const dailyRate = currentROI * 100;
+
+//   return (
+//     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+//       <div className="space-y-1">
+//         <div className="flex items-center justify-between">
+//           <span className="text-sm text-gray-700">Daily</span>
+//           <span className="text-sm font-semibold text-green-600">
+//             +{dailyRate.toFixed(2)}%
+//           </span>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+
+// type CardType = 'stats' | 'activity' | 'community';
+
+// // Add this type definition at the top of the file
+// type ActivityType = 'deposit' | 'withdrawal' | 'stake' | 'redeposit';
+
+// // Add these interfaces
+// interface Activity {
+//   id: string;
+//   user_id: string;
+//   type: ActivityType;
+//   amount: number;
+//   created_at: string;
+//   status: 'completed' | 'pending' | 'failed';
+// }
+
+// // Add these constants for both networks
+// const MAINNET_DEPOSIT_ADDRESS = 'UQDd4ENxNBVIFNoi1t1FQPrLhLM1rMbxIFoI1sWIS4vuhjs-';
+// const TESTNET_DEPOSIT_ADDRESS = 'UQDd4ENxNBVIFNoi1t1FQPrLhLM1rMbxIFoI1sWIS4vuhjs-';
+
+// const isMainnet = true; // You can toggle this for testing
+
+// // Use the appropriate address based on network
+// const DEPOSIT_ADDRESS = isMainnet ? MAINNET_DEPOSIT_ADDRESS : TESTNET_DEPOSIT_ADDRESS;
+
+// // Constants for both networks
+// const MAINNET_API_KEY = 'ba0e3b7f5080add7ba9bc310b2652ce4d33654575152d5ab90fde863309f6118';
+// const TESTNET_API_KEY = 'bb31868e5cf6529efb16bcf547beb3c534a28d1e139bd63356fd936c168fe662';
+
+// // Use toncenter.com as HTTP API endpoint to interact with TON blockchain
+// const tonweb = isMainnet ?
+//     new TonWeb(new TonWeb.HttpProvider('https://toncenter.com/api/v2/jsonRPC', {apiKey: MAINNET_API_KEY})) :
+//     new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC', {apiKey: TESTNET_API_KEY}));
+
+// // Add this near the top with other constants
+// const NETWORK_NAME = isMainnet ? 'Mainnet' : 'Testnet';
+
+// // Helper function to generate unique ID
+// const generateUniqueId = async () => {
+//   let attempts = 0;
+//   const maxAttempts = 5;
+  
+//   while (attempts < maxAttempts) {
+//     // Generate a random ID between 1 and 999999
+//     const id = Math.floor(Math.random() * 999999) + 1;
+    
+//     // Check if ID exists
+//     const { error } = await supabase
+//       .from('deposits')
+//       .select('id')
+//       .eq('id', id)
+//       .single();
+      
+//     if (error && error.code === 'PGRST116') {  // No rows returned
+//       return id;  // Return as number, not string
+//     }
+    
+//     attempts++;
+//   }
+  
+//   throw new Error('Could not generate unique deposit ID');
+// };
+
+// // Add these types and interfaces near other interfaces
+// interface SnackbarConfig {
+//   message: string;
+//   description?: string;
+//   duration?: number;
+// }
+
+// // Add these constants near other constants
+// const SNACKBAR_DURATION = 5000; // 5 seconds
+
+// // Add these new interfaces
+// interface LocalEarningState {
+//   lastUpdate: number;
+//   currentEarnings: number;
+//   baseEarningRate: number;
+//   isActive: boolean;
+// }
+
+// // Add these constants
+// const EARNINGS_SYNC_INTERVAL = 60000; // Sync with server every 60 seconds
+// const EARNINGS_STORAGE_KEY = 'user_earnings_state';
+// const EARNINGS_UPDATE_INTERVAL = 1000; // Update UI every second
+
+// // Add these constants for accuracy checks
+// const EARNINGS_ACCURACY_CHECK_KEY = 'earnings_accuracy_check';
+
+// // Add this interface for accuracy tracking
+// interface AccuracyCheckpoint {
+//   timestamp: number;
+//   earnings: number;
+//   lastServerSync: number;
+// }
+
+// // Add this interface near other interfaces
+// interface OfflineEarnings {
+//   lastActiveTimestamp: number;
+//   baseEarningRate: number;
+// }
+
+// // Add this constant near other constants
+// const OFFLINE_EARNINGS_KEY = 'offline_earnings_state';
+
+// // Add this constant near other constants
+// const TOTAL_EARNED_KEY = 'total_earned_state';
+
+// // Add these helper functions
+// const saveAccuracyCheckpoint = (checkpoint: AccuracyCheckpoint) => {
+//   localStorage.setItem(EARNINGS_ACCURACY_CHECK_KEY, JSON.stringify(checkpoint));
+// };
+
+// // Update the calculateStakingProgress function
+// const calculateStakingProgress = (depositDate: Date | string | null): number => {
+//   if (!depositDate) return 0;
+  
+//   // Convert string to Date if necessary
+//   const startDate = typeof depositDate === 'string' ? new Date(depositDate) : depositDate;
+  
+//   // Validate the date
+//   if (isNaN(startDate.getTime())) return 0;
+
+//   const now = Date.now();
+//   const startTime = startDate.getTime();
+//   const endTime = startTime + (100 * 24 * 60 * 60 * 1000); // 100 days
+  
+//   // Handle edge cases
+//   if (now >= endTime) return 100;
+//   if (now <= startTime) return 0;
+  
+//   // Calculate progress
+//   const progress = ((now - startTime) / (endTime - startTime)) * 100;
+//   return Math.min(Math.max(progress, 0), 100); // Ensure between 0 and 100
+// };
+
+// // Add these helper functions
+// const saveOfflineEarnings = (state: OfflineEarnings) => {
+//   localStorage.setItem(OFFLINE_EARNINGS_KEY, JSON.stringify(state));
+// };
+
+// const loadOfflineEarnings = (): OfflineEarnings | null => {
+//   const stored = localStorage.getItem(OFFLINE_EARNINGS_KEY);
+//   return stored ? JSON.parse(stored) : null;
+// };
+
+// const loadTotalEarned = (): number => {
+//   const stored = localStorage.getItem(TOTAL_EARNED_KEY);
+//   return stored ? parseFloat(stored) : 0;
+// };
+
+// // Update the ReStakeCountdown component
+// const ReStakeCountdown: FC<{ depositDate: string | Date }> = ({ depositDate }) => {
+//   const [timeLeft, setTimeLeft] = useState(() => {
+//     const start = new Date(depositDate);
+//     const now = new Date();
+//     const totalDays = 100;
+//     const daysElapsed = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+//     const daysLeft = Math.max(0, totalDays - daysElapsed);
+//     return daysLeft;
+//   });
+
+//   useEffect(() => {
+//     // Update daily
+//     const timer = setInterval(() => {
+//       const start = new Date(depositDate);
+//       const now = new Date();
+//       const totalDays = 100;
+//       const daysElapsed = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+//       const daysLeft = Math.max(0, totalDays - daysElapsed);
+//       setTimeLeft(daysLeft);
+//     }, 86400000); // Update every 24 hours
+
+//     return () => clearInterval(timer);
+//   }, [depositDate]);
+
+//   // If fully unlocked
+//   if (timeLeft === 0) {
+//     return (
+//       <div className="flex items-center gap-1">
+//         <span className="w-1 h-1 rounded-full bg-green-400"></span>
+//         <span className="text-[10px] text-green-400">Unlocked</span>
+//       </div>
+//     );
+//   }
+
+//   // If still locked
+//   return (
+//     <div className="flex items-center gap-1">
+//       <span className="w-1 h-1 rounded-full bg-yellow-400"></span>
+//       <span className="text-[10px] text-yellow-400">
+//         Locked: {timeLeft}d
+//       </span>
+//     </div>
+//   );
+// };
+
+// const calculateTotalEarnings = (amount: number): number => {
+// let totalEarnings = 0;
+// let currentROI = 0.01; // Start at 1%
+
+// // Calculate earnings for each day up to 100 days
+// for (let day = 1; day <= 100; day++) {
+//   // Update ROI every 5 days
+//   if (day > 1 && day % 5 === 1) {
+//     currentROI = Math.min(currentROI + 0.005, 0.11); // Increase by 0.5%, max 11%
+//   }
+  
+//   // Add daily earnings
+//   totalEarnings += amount * currentROI;
+// }
+
+// return totalEarnings;
+// };
+
+// export const IndexPage: FC = () => {
+
+//   const [currentTab, setCurrentTab] = useState('home');
+//   const [showDepositModal, setShowDepositModal] = useState(false);
+//   const { user, isLoading, error, updateUserData } = useAuth();
+//   const [userFriendlyAddress, setUserFriendlyAddress] = useState<string | null>(null);
+//   const tonConnectUI = useTonConnectUI();
+//   const [isWithdrawing,] = useState(false);
+//   const [activeCard, setActiveCard] = useState<CardType>('stats');
+//   const [currentROI, ] = useState<number>(0.01); // 1% daily default
+//   const [tonPrice, setTonPrice] = useState<number>(2.5);
+//   const [showOnboarding, setShowOnboarding] = useState(false);
+//    const [activities, setActivities] = useState<Activity[]>([]);
+//    const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+//    const [depositStatus, setDepositStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+//    const [walletBalance, setWalletBalance] = useState<string>('0');
+//    const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+//    const [isSnackbarVisible, setSnackbarVisible] = useState(false);
+//    const [snackbarMessage, setSnackbarMessage] = useState('');
+//    const [snackbarDescription, setSnackbarDescription] = useState('');
+//    const snackbarTimeoutRef = useRef<NodeJS.Timeout>();
+//    const [customAmount, setCustomAmount] = useState<string>('');
+//  // Add these state variables
+//  const [showSTKBuyModal, setShowSTKBuyModal] = useState(false);
+//  const [stkAmount, setStkAmount] = useState(0);
+//  const [tonCost, setTonCost] = useState(0);
+//  // const [isProcessing, setIsProcessing] = useState(false);
+//  // Add this state
+//  const [showOfflineRewardsModal, setShowOfflineRewardsModal] = useState(false);
+//  const [offlineRewardsAmount, setOfflineRewardsAmount] = useState(0);
+
+
+  
+//   useEffect(() => {
+//     const [tonConnect] = tonConnectUI;
+//     if (tonConnect.account) {
+//       const rawAddress = tonConnect.account.address;
+//       const friendlyAddress = toUserFriendlyAddress(rawAddress);
+//       setUserFriendlyAddress(friendlyAddress);
+//     }
+//   }, [tonConnectUI]);
+
+//   // Update the earning system in the IndexPage component
+//   const [earningState, setEarningState] = useState<LocalEarningState>({
+//     lastUpdate: Date.now(),
+//     currentEarnings: 0,
+//     baseEarningRate: 0,
+//     isActive: false,
+//   });
+
+//   // Add function to save earning state to localStorage
+//   const saveEarningState = (state: LocalEarningState) => {
+//     try {
+//       localStorage.setItem(EARNINGS_STORAGE_KEY, JSON.stringify(state));
+//     } catch (error) {
+//       console.error('Error saving earning state:', error);
+//     }
+//   };
+
+//   // Add function to load earning state from localStorage
+//   const loadEarningState = (): LocalEarningState | null => {
+//     try {
+//       const stored = localStorage.getItem(EARNINGS_STORAGE_KEY);
+//       if (stored) {
+//         const parsed = JSON.parse(stored);
+//         // Validate the loaded state
+//         if (parsed && typeof parsed === 'object' && 
+//             'lastUpdate' in parsed && 'currentEarnings' in parsed && 
+//             'baseEarningRate' in parsed && 'isActive' in parsed) {
+//           return parsed;
+//         }
+//       }
+//     } catch (error) {
+//       console.error('Error loading earning state:', error);
+//     }
+//     return null;
+//   };
+
+//   // Update syncEarningsWithServer to include accuracy reconciliation
+//   const syncEarningsWithServer = async (earnings: number) => {
+//     if (!user?.id) return;
+
+//     try {
+//       const now = Date.now();
+//       const totalEarned = loadTotalEarned() + earnings;
+
+//       // Use upsert to ensure earnings are always saved
+//       const { error } = await supabase
+//         .from('user_earnings')
+//         .upsert({
+//           user_id: user.id,
+//           current_earnings: earnings,
+//           total_earned: totalEarned, // Add total earned to track lifetime earnings
+//           last_update: new Date(now).toISOString(),
+//           earning_rate: earningState.baseEarningRate
+//         });
+
+//       if (error) throw error;
+
+//       // Save total earned locally
+//       localStorage.setItem(TOTAL_EARNED_KEY, totalEarned.toString());
+
+//       // Update local state
+//       setEarningState(prevState => ({
+//         ...prevState,
+//         currentEarnings: earnings,
+//         lastUpdate: now
+//       }));
+
+//       // Save accuracy checkpoint
+//       saveAccuracyCheckpoint({
+//         timestamp: now,
+//         earnings: earnings,
+//         lastServerSync: now
+//       });
+
+//     } catch (error) {
+//       console.error('Error syncing earnings:', error);
+//     }
+//   };
+
+
+//   // Update the earnings effect to include accuracy checks
+//   useEffect(() => {
+//     if (!user?.id) return;
+
+//     // Load saved state and total earned
+//     const savedState = loadEarningState();
+//     const totalEarned = loadTotalEarned();
+//     const now = Date.now();
+
+//     const initializeEarningState = async () => {
+//       try {
+//         // Fetch current earnings from server
+//         const { data: serverData } = await supabase
+//           .from('user_earnings')
+//           .select('current_earnings, total_earned, last_update')
+//           .eq('user_id', user.id)
+//           .single();
+
+//         const newRate = FREE_MINING_RATE_PER_SEC;
+        
+//         if (serverData) {
+//           // Calculate accumulated earnings since last update
+//           const lastUpdateTime = new Date(serverData.last_update).getTime();
+//           const secondsElapsed = (now - lastUpdateTime) / 1000;
+//           const accumulatedEarnings = (newRate * secondsElapsed) + serverData.current_earnings;
+
+//           const newState = {
+//             lastUpdate: now,
+//             currentEarnings: accumulatedEarnings,
+//             baseEarningRate: newRate,
+//             isActive: true
+//           };
+          
+//           setEarningState(newState);
+//           saveEarningState(newState);
+//           saveAccuracyCheckpoint({
+//             timestamp: now,
+//             earnings: accumulatedEarnings,
+//             lastServerSync: now
+//           });
+
+//           // Update total earned
+//           localStorage.setItem(TOTAL_EARNED_KEY, serverData.total_earned.toString());
+//         } else {
+//           // Initialize new earning state
+//           const newState = {
+//             lastUpdate: now,
+//             currentEarnings: savedState?.currentEarnings || 0,
+//             baseEarningRate: newRate,
+//             isActive: true
+//           };
+
+//           setEarningState(newState);
+//           saveEarningState(newState);
+//           saveAccuracyCheckpoint({
+//             timestamp: now,
+//             earnings: savedState?.currentEarnings || 0,
+//             lastServerSync: now
+//           });
+
+//           // Initialize total earned
+//           localStorage.setItem(TOTAL_EARNED_KEY, totalEarned.toString());
+//         }
+//       } catch (error) {
+//         console.error('Error initializing earning state:', error);
+//       }
+//     };
+
+//     initializeEarningState();
+
+//     // Set up earnings calculation interval
+//     const earningsInterval = setInterval(() => {
+//       setEarningState(prevState => {
+//         const now = Date.now();
+//         const secondsElapsed = (now - prevState.lastUpdate) / 1000;
+//         const newEarnings = prevState.currentEarnings + (prevState.baseEarningRate * secondsElapsed);
+        
+//         const newState = {
+//           ...prevState,
+//           lastUpdate: now,
+//           currentEarnings: newEarnings
+//         };
+        
+//         saveEarningState(newState);
+//         return newState;
+//       });
+//     }, EARNINGS_UPDATE_INTERVAL);
+
+//     // Set up server sync interval
+//     const syncInterval = setInterval(() => {
+//       syncEarningsWithServer(earningState.currentEarnings);
+//     }, EARNINGS_SYNC_INTERVAL);
+
+//     return () => {
+//       clearInterval(earningsInterval);
+//       clearInterval(syncInterval);
+//       // Save final state before unmounting
+//       saveEarningState(earningState);
+//     };
+//   }, [user?.id, currentROI]);
+
+//   // Add this utility function
+//   const showSnackbar = ({ message, description = '', duration = SNACKBAR_DURATION }: SnackbarConfig) => {
+//     if (snackbarTimeoutRef.current) {
+//       clearTimeout(snackbarTimeoutRef.current);
+//     }
+
+//     setSnackbarMessage(message);
+//     setSnackbarDescription(description);
+//     setSnackbarVisible(true);
+
+//     snackbarTimeoutRef.current = setTimeout(() => {
+//       setSnackbarVisible(false);
+//     }, duration);
+//   };
+
+//   // Add this effect to fetch and update the wallet balance
+//   useEffect(() => {
+//     const fetchWalletBalance = async () => {
+//       const [tonConnect] = tonConnectUI;
+//       if (!tonConnect.account) {
+//         setWalletBalance('0');
+//         setIsLoadingBalance(false);
+//         return;
+//       }
+
+//       try {
+//         const balance = await tonweb.getBalance(tonConnect.account.address);
+//         const balanceInTON = fromNano(balance);
+//         setWalletBalance(balanceInTON);
+//       } catch (error) {
+//         console.error('Error fetching wallet balance:', error);
+//         setWalletBalance('0');
+//       } finally {
+//         setIsLoadingBalance(false);
+//       }
+//     };
+
+//     fetchWalletBalance();
+//     // Update balance every 30 seconds
+//     const intervalId = setInterval(fetchWalletBalance, 30000);
+
+//     return () => clearInterval(intervalId);
+//   }, [tonConnectUI]);
+
+// // Add this function to calculate earnings rate based on user's balance and ROI
+// const calculateEarningRate = (balance: number, roi: number) => {
+//   // Convert daily ROI to per-second rate
+//   // ROI is in decimal form (e.g., 0.01 for 1%)
+//   return (balance * roi) / 86400; // 86400 seconds in a day
+// };
+
+// // Update handleDeposit to initialize earning state
+// const handleDeposit = async (amount: number) => {
+//   try {
+//     // Validate amount
+//     if (amount < 1) {
+//       showSnackbar({ 
+//         message: 'Invalid Amount', 
+//         description: 'Minimum deposit amount is 1 TON' 
+//       });
+//       return;
+//     }
+
+//     // Validate user and wallet connection
+//     if (!user?.id || !userFriendlyAddress) {
+//       showSnackbar({ 
+//         message: 'Wallet Not Connected', 
+//         description: 'Please connect your wallet first' 
+//       });
+//       return;
+//     }
+
+//     // Check wallet balance
+//     const walletBalanceNum = Number(walletBalance);
+//     if (walletBalanceNum < amount) {
+//       showSnackbar({
+//         message: 'Insufficient Balance',
+//         description: `Your wallet balance is ${walletBalanceNum.toFixed(2)} TON`
+//       });
+//       return;
+//     }
+
+//     setDepositStatus('pending');
+//     const amountInNano = toNano(amount.toString());
+    
+//     // Generate unique ID
+//     const depositId = await generateUniqueId();
+    
+//     // Record pending deposit
+//     const { error: pendingError } = await supabase
+//       .from('deposits')
+//       .insert([{
+//         id: depositId,
+//         user_id: user.id,
+//         amount: amount,
+//         amount_nano: amountInNano.toString(),
+//         status: 'pending',
+//         created_at: new Date().toISOString()
+//       }]);
+
+//     if (pendingError) throw pendingError;
+
+//     // Create transaction
+//     const transaction = {
+//       validUntil: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes
+//       messages: [
+//         {
+//           address: DEPOSIT_ADDRESS, // Use string address
+//           amount: amountInNano.toString(),
+//         },
+//       ],
+//     };
+
+//     const [tonConnect] = tonConnectUI;
+//     const result = await tonConnect.sendTransaction(transaction);
+
+//     if (result) {
+//       // Update deposit status
+//       const { error: updateError } = await supabase
+//         .from('deposits')
+//         .update({ 
+//           status: 'confirmed',
+//           tx_hash: result.boc
+//         })
+//         .eq('id', depositId);
+
+//       if (updateError) throw updateError;
+
+//       // Process deposit
+//       const { error: balanceError } = await supabase.rpc('process_deposit_v2', {
+//         p_user_id: user.id,
+//         p_amount: amount,
+//         p_deposit_id: depositId
+//       });
+
+//       if (balanceError) throw balanceError;
+
+//       // Update UI state
+//       setDepositStatus('success');
+//       showSnackbar({ 
+//         message: 'Deposit Successful', 
+//         description: `Successfully deposited ${amount} TON` 
+//       });
+      
+//       // Refresh user data
+//       await updateUserData({ id: user.id }); // Pass object with id property
+//       setShowDepositModal(false);
+
+//       // After successful deposit, initialize or update earnings state
+//       const totalBalance = (user?.balance || 0) + amount;
+//       const newRate = calculateEarningRate(totalBalance, currentROI);
+//       const newState = {
+//         lastUpdate: Date.now(),
+//         currentEarnings: earningState.currentEarnings,
+//         baseEarningRate: newRate,
+//         isActive: true
+//       };
+      
+//       setEarningState(newState);
+//       saveEarningState(newState);
+//     }
+//   } catch (error) {
+//     console.error('Deposit failed:', error);
+//     setDepositStatus('error');
+//     showSnackbar({ 
+//       message: 'Deposit Failed', 
+//       description: 'Please try again later' 
+//     });
+//   }
+// };
+  
+//   // Add this effect to handle wallet balance
+//   useEffect(() => {
+//     if (!showSTKBuyModal) return;
+
+//     const fetchWalletBalance = async () => {
+//       const [tonConnect] = tonConnectUI;
+//       if (!tonConnect.account?.address) {
+//         setWalletBalance('0');
+//         setIsLoadingBalance(false);
+//         return;
+//       }
+
+//       try {
+//         setIsLoadingBalance(true);
+//         const balance = await tonweb.getBalance(tonConnect.account.address);
+//         const balanceInTON = fromNano(balance);
+//         setWalletBalance(balanceInTON);
+//       } catch (error) {
+//         console.error('Error fetching wallet balance:', error);
+//         setWalletBalance('0');
+//       } finally {
+//         setIsLoadingBalance(false);
+//       }
+//     };
+
+//     fetchWalletBalance();
+//     const intervalId = setInterval(fetchWalletBalance, 3000);
+//     return () => clearInterval(intervalId);
+//   }, [showSTKBuyModal, tonConnectUI]);
+
+//   // Update the deposit button text based on status
+//   const getDepositButtonText = () => {
+//     if (user?.balance && user.balance > 0) {
+//       return (
+//         <div className="flex items-center gap-1.5">
+//           <svg className="w-3.5 h-3.5 relative" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+//           </svg>
+//           <span className="relative">Top Up</span>
+//         </div>
+//       );
+//     }
+    
+//     return (
+//       <div className="flex items-center gap-1.5">
+//         <span className="relative">Stake TON</span>
+//       </div>
+//     );
+//   };
+
+
+//   // Add this function to format earnings display
+//   const formatEarnings = (amount: number): string => {
+//     if (amount >= 1) {
+//       return amount.toFixed(7);
+//     } else {
+//       return amount.toFixed(7);
+//     }
+//   };
+
+//   // Update the earnings display in your JSX
+//   const renderEarningsSection = () => (
+//     <div className="mt-2 flex items-center gap-2">
+//       {user?.balance && user.balance > 0 ? (
+//         <>
+//           <div className="flex items-center gap-1.5">
+//             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+//             <span className="text-xs text-blue-500">
+//               +{formatEarnings(earningState.baseEarningRate)} TON/sec
+//             </span>
+//           </div>
+//           <span className="text-xs text-white/40">
+//             ({(earningState.baseEarningRate * 86400).toFixed(6)} TON/day)
+//           </span>
+//         </>
+//       ) : (
+//         <span className="text-xs text-white/40">
+//           Deposit TON to start earning
+//         </span>
+//       )}
+//     </div>
+//   );
+
+//   // Add effect to fetch and subscribe to activities
+//   useEffect(() => {
+//     const fetchActivities = async () => {
+//       if (!user?.id) return;
+
+//       setIsLoadingActivities(true);
+//       try {
+//         const { data, error } = await supabase
+//           .from('activities')
+//           .select('*')
+//           .eq('user_id', user.id)
+//           .order('created_at', { ascending: false })
+//           .limit(10);
+
+//         if (error) throw error;
+//         setActivities(data || []);
+//       } catch (error) {
+//         console.error('Error fetching activities:', error);
+//       } finally {
+//         setIsLoadingActivities(false);
+//       }
+//     };
+
+//     // Only fetch if activities tab is active
+//     if (activeCard === 'activity') {
+//       fetchActivities();
+
+//       // Set up real-time subscription
+//       const subscription = supabase
+//         .channel('activities-channel')
+//         .on(
+//           'postgres_changes',
+//           {
+//             event: '*',
+//             schema: 'public',
+//             table: 'activities',
+//             filter: `user_id=eq.${user?.id}`
+//           },
+//           (payload) => {
+//             // Handle different types of changes
+//             if (payload.eventType === 'INSERT') {
+//               setActivities(prev => [payload.new as Activity, ...prev].slice(0, 10));
+//             } else if (payload.eventType === 'UPDATE') {
+//               setActivities(prev => 
+//                 prev.map(activity => 
+//                   activity.id === payload.new.id ? payload.new as Activity : activity
+//                 )
+//               );
+//             } else if (payload.eventType === 'DELETE') {
+//               setActivities(prev => 
+//                 prev.filter(activity => activity.id !== payload.old.id)
+//               );
+//             }
+//           }
+//         )
+//         .subscribe();
+
+//         // Cleanup subscription
+//         return () => {
+//           supabase.removeChannel(subscription);
+//         };
+//       }
+//     }, [user?.id, activeCard]);
+
+//   // Helper function to format date
+//   const formatDate = (dateString: string) => {
+//     const date = new Date(dateString);
+//     return new Intl.DateTimeFormat('en-US', {
+//       month: 'short',
+//       day: 'numeric',
+//       hour: '2-digit',
+//       minute: '2-digit'
+//     }).format(date);
+//   };
+
+//   // Update the activity card content to show more details
+//   const renderActivityCard = () => (
+//     <div className="relative overflow-hidden rounded-xl p-4 border border-blue-500/30 shadow-xl mt-5 mb-3 bg-gradient-to-br from-black/80 via-[#0A0A1A] to-[#0A0A1F]">
+//       <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
+
+//       {isLoadingActivities ? (
+//         <div className="relative flex items-center justify-center py-8">
+//           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+//         </div>
+//       ) : activities.length === 0 ? (
+//         <div className="text-center py-8">
+//           <p className="text-white/40">No activities yet</p>
+//         </div>
+//       ) : (
+//         <div className="space-y-4">
+//           {activities.map((activity) => (
+//             <div 
+//               key={activity.id}
+//               className="relative flex items-center justify-between py-3 border-b border-white/5 last:border-0"
+//             >
+//               <div className="flex items-center gap-3">
+//                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+//                   activity.type === 'deposit' ? 'bg-blue-500/20' :
+//                   activity.type === 'withdrawal' ? 'bg-green-500/20' :
+//                   activity.type === 'stake' ? 'bg-purple-500/20' :
+//                   'bg-yellow-500/20'
+//                 }`}>
+//                   {getActivityIcon(activity.type)}
+//                 </div>
+//                 <div>
+//                   <div className="flex items-center gap-2">
+//                     <p className="text-sm font-medium text-white">
+//                       {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+//                     </p>
+//                     <span className={`text-xs px-2 py-0.5 rounded-full ${
+//                       activity.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+//                       activity.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+//                       'bg-red-500/20 text-red-400'
+//                     }`}>
+//                       {activity.status}
+//                     </span>
+//                   </div>
+//                   <div className="flex items-center gap-2 mt-0.5">
+//                     <p className="text-sm text-white/60">
+//                       {activity.amount.toFixed(2)} TON
+//                     </p>
+//                     <span className="text-xs text-white/40">
+//                       • {formatDate(activity.created_at)}
+//                     </span>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+
+//   // Activity card content
+//   const getActivityIcon = (type: Activity['type']) => {
+//     switch (type) {
+//       case 'deposit':
+//         return <FaCoins className="w-4 h-4 text-blue-400" />;
+//       case 'withdrawal':
+//         return <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+//         </svg>;
+//       case 'stake':
+//         return <BiNetworkChart className="w-4 h-4 text-purple-400" />;
+//       case 'redeposit':
+//         return <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+//         </svg>;
+//       default:
+//         return null;
+//     }
+//   };
+
+//   // Add useEffect to fetch price
+//   useEffect(() => {
+//     const fetchPrice = async () => {
+//       const price = await getTONPrice();
+//       setTonPrice(price);
+//     };
+
+//     fetchPrice();
+
+//     // Update price every 60 seconds
+//     const interval = setInterval(fetchPrice, 60000);
+
+//     return () => clearInterval(interval);
+//   }, []);
+
+//   useEffect(() => {
+//     if (user && !isLoading) {
+//       const hasSeenOnboarding = localStorage.getItem(`onboarding_${user.telegram_id}`);
+//       const isNewUser = user.total_deposit === 0;
+
+//       if (!hasSeenOnboarding || isNewUser) {
+//         setShowOnboarding(true);
+//         const timer = setTimeout(() => {
+//           setShowOnboarding(false);
+//           localStorage.setItem(`onboarding_${user.telegram_id}`, 'true');
+//         }, 14000); // 2s loading + (4 steps × 3s)
+//         return () => clearTimeout(timer);
+//       }
+//     }
+//   }, [user, isLoading]);
+
+//   // Add this effect to handle offline earnings
+//   useEffect(() => {
+//     const handleVisibilityChange = () => {
+//       if (document.visibilityState === 'visible') {
+//         // App became visible, calculate offline earnings
+//         const offlineState = loadOfflineEarnings();
+//         if (offlineState && earningState.isActive) {
+//           const now = Date.now();
+//           const secondsElapsed = (now - offlineState.lastActiveTimestamp) / 1000;
+//           const offlineEarnings = offlineState.baseEarningRate * secondsElapsed;
+
+//           if (offlineEarnings > 0) {
+//             setEarningState(prev => ({
+//               ...prev,
+//               currentEarnings: prev.currentEarnings + offlineEarnings,
+//               lastUpdate: now
+//             }));
+
+//             showSnackbar({
+//               message: 'Offline Earnings Added',
+//               description: `You earned ${offlineEarnings.toFixed(8)} TON while offline`
+//             });
+//           }
+//         }
+//       } else {
+//         // App is going to background, save current state
+//         if (earningState.isActive) {
+//           saveOfflineEarnings({
+//             lastActiveTimestamp: Date.now(),
+//             baseEarningRate: earningState.baseEarningRate
+//           });
+//         }
+//       }
+//     };
+
+//     document.addEventListener('visibilitychange', handleVisibilityChange);
+//     return () => {
+//       document.removeEventListener('visibilitychange', handleVisibilityChange);
+//     };
+//   }, [earningState]);
+
+//   // Update the earning effect to include offline earnings
+//   useEffect(() => {
+//     if (!user?.id || !user.balance) return;
+
+//     // Load saved state and accuracy checkpoint
+//     const savedState = loadEarningState();
+//     const now = Date.now();
+
+//     const initializeEarningState = async () => {
+//       try {
+//         // Fetch current earnings from server
+//         const { data: serverData } = await supabase
+//           .from('user_earnings')
+//           .select('current_earnings, last_update')
+//           .eq('user_id', user.id)
+//           .single();
+
+//         const newRate = FREE_MINING_RATE_PER_SEC;
+        
+//         if (serverData) {
+//           // Calculate accumulated earnings since last update
+//           const lastUpdateTime = new Date(serverData.last_update).getTime();
+//           const secondsElapsed = (now - lastUpdateTime) / 1000;
+//           const accumulatedEarnings = (newRate * secondsElapsed) + serverData.current_earnings;
+
+//           const newState = {
+//             lastUpdate: now,
+//             currentEarnings: accumulatedEarnings,
+//             baseEarningRate: newRate,
+//             isActive: true
+//           };
+          
+//           setEarningState(newState);
+//           saveEarningState(newState);
+//           saveAccuracyCheckpoint({
+//             timestamp: now,
+//             earnings: accumulatedEarnings,
+//             lastServerSync: now
+//           });
+//         } else {
+//           // Initialize new earning state
+//           const newState = {
+//             lastUpdate: now,
+//             currentEarnings: savedState?.currentEarnings || 0,
+//             baseEarningRate: newRate,
+//             isActive: true
+//           };
+
+//           setEarningState(newState);
+//           saveEarningState(newState);
+//           saveAccuracyCheckpoint({
+//             timestamp: now,
+//             earnings: savedState?.currentEarnings || 0,
+//             lastServerSync: now
+//           });
+//         }
+//       } catch (error) {
+//         console.error('Error initializing earning state:', error);
+//       }
+//     };
+
+//     initializeEarningState();
+
+//     // Set up earnings calculation interval
+//     const earningsInterval = setInterval(() => {
+//       setEarningState(prevState => {
+//         const now = Date.now();
+//         const secondsElapsed = (now - prevState.lastUpdate) / 1000;
+//         const newEarnings = prevState.currentEarnings + (prevState.baseEarningRate * secondsElapsed);
+        
+//         const newState = {
+//           ...prevState,
+//           lastUpdate: now,
+//           currentEarnings: newEarnings
+//         };
+        
+//         saveEarningState(newState);
+//         return newState;
+//       });
+//     }, EARNINGS_UPDATE_INTERVAL);
+
+//     // Set up server sync interval
+//     const syncInterval = setInterval(() => {
+//       syncEarningsWithServer(earningState.currentEarnings);
+//     }, EARNINGS_SYNC_INTERVAL);
+
+//     return () => {
+//       clearInterval(earningsInterval);
+//       clearInterval(syncInterval);
+//       // Save final state before unmounting
+//       saveEarningState(earningState);
+//     };
+//   }, [user?.id, currentROI]);
+
+ 
+//   // Update the offline earnings handling
+//   useEffect(() => {
+//     if (!user?.id) return;
+
+//     // Load offline earnings on mount
+//     const offlineState = loadOfflineEarnings();
+//     if (offlineState && earningState.isActive) {
+//       const now = Date.now();
+//       const secondsElapsed = (now - offlineState.lastActiveTimestamp) / 1000;
+//       const offlineEarnings = offlineState.baseEarningRate * secondsElapsed;
+
+//       if (offlineEarnings > 0) {
+//         setOfflineRewardsAmount(offlineEarnings);
+//         setShowOfflineRewardsModal(true);
+//       }
+//     }
+
+//     // Clear offline earnings state
+//     localStorage.removeItem(OFFLINE_EARNINGS_KEY);
+//   }, [user?.id, currentROI]);
+
+//   // Add the claim handler
+//   const handleClaimOfflineRewards = async () => {
+//     try {
+//       setEarningState(prev => ({
+//         ...prev,
+//         currentEarnings: prev.currentEarnings + offlineRewardsAmount,
+//         lastUpdate: Date.now()
+//       }));
+
+//       showSnackbar({
+//         message: 'Offline Rewards Claimed',
+//         description: `Successfully claimed ${offlineRewardsAmount.toFixed(8)} TON`
+//       });
+
+//       setShowOfflineRewardsModal(false);
+//       setOfflineRewardsAmount(0);
+//     } catch (error) {
+//       console.error('Error claiming offline rewards:', error);
+//       showSnackbar({
+//         message: 'Claim Failed',
+//         description: 'Please try again later'
+//       });
+//     }
+//   };
+
+//     // Add this helper function to calculate potential earnings
+//     const calculatePotentialEarnings = (balance: number): number => {
+//       let totalEarnings = 0;
+//       let currentROI = 0.01; // Starting at 1%
+      
+//       // Calculate for 100 days with ROI increasing every 5 days
+//       for (let day = 1; day <= 100; day++) {
+//         // Increase ROI by 0.5% every 5 days
+//         if (day % 5 === 0) {
+//           currentROI += 0.005; // Add 0.5%
+//         }
+        
+//         // Add daily earnings
+//         totalEarnings += balance * currentROI;
+//       }
+      
+//       return totalEarnings;
+//     };
+
+//   // // Add handler to claim live earnings into available pool (UI + server sync reset)
+//   // const handleClaimEarnings = async () => {
+//   //   try {
+//   //     const amountToClaim = earningState.currentEarnings;
+//   //     if (!user?.id || amountToClaim <= 0) return;
+
+//   //     // Optimistically reset local earnings
+//   //     setEarningState(prev => ({
+//   //       ...prev,
+//   //       currentEarnings: 0,
+//   //       lastUpdate: Date.now()
+//   //     }));
+
+//   //     // Persist reset to server so accrual restarts from 0
+//   //     await supabase
+//   //       .from('user_earnings')
+//   //       .upsert({
+//   //         user_id: user.id,
+//   //         current_earnings: 0,
+//   //         last_update: new Date().toISOString(),
+//   //         earning_rate: earningState.baseEarningRate
+//   //       });
+
+//   //     showSnackbar({
+//   //       message: 'Rewards Claimed',
+//   //       description: `Claimed ${(amountToClaim).toFixed(8)} TON to your wallet pool`
+//   //     });
+//   //   } catch (error) {
+//   //     console.error('Error claiming earnings:', error);
+//   //     showSnackbar({
+//   //       message: 'Claim Failed',
+//   //       description: 'Please try again later'
+//   //     });
+//   //   }
+//   // };
+
+//   // Free 24h mining configuration
+//   const FREE_MINING_TON_PER_DAY = 0.01; // Adjust as desired
+//   const FREE_MINING_RATE_PER_SEC = FREE_MINING_TON_PER_DAY / 86400;
+
+//   // Professional mining stats
+//   const [hashRate, setHashRate] = useState(1250);
+//   const [networkDifficulty, setNetworkDifficulty] = useState(1.2);
+//   const [miningPower, setMiningPower] = useState(85);
+//   const [blocksMined, setBlocksMined] = useState(0);
+//   const [uptime, setUptime] = useState(0);
+
+//   // Simulate mining stats updates
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       setHashRate(prev => prev + Math.random() * 10 - 5);
+//       setNetworkDifficulty(prev => Math.max(0.8, prev + (Math.random() * 0.1 - 0.05)));
+//       setMiningPower(prev => Math.max(60, Math.min(100, prev + (Math.random() * 4 - 2))));
+//       setBlocksMined(prev => prev + (Math.random() > 0.95 ? 1 : 0));
+//       setUptime(prev => prev + 1);
+//     }, 2000);
+//     return () => clearInterval(interval);
+//   }, []);
+
+//   const formatUptime = (seconds: number) => {
+//     const hours = Math.floor(seconds / 3600);
+//     const mins = Math.floor((seconds % 3600) / 60);
+//     const secs = seconds % 60;
+//     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+//   };
+
+//   // Countdown to daily reset (based on remaining accrual to target)
+//   const [dailyResetCountdown, setDailyResetCountdown] = useState<string>('24:00:00');
+//   const formatCountdown = (totalSeconds: number) => {
+//     const s = Math.max(0, Math.floor(totalSeconds));
+//     const hrs = Math.floor(s / 3600).toString().padStart(2, '0');
+//     const mins = Math.floor((s % 3600) / 60).toString().padStart(2, '0');
+//     const secs = Math.floor(s % 60).toString().padStart(2, '0');
+//     return `${hrs}:${mins}:${secs}`;
+//   };
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       const remaining = Math.max(0, FREE_MINING_TON_PER_DAY - earningState.currentEarnings);
+//       const secondsLeft = remaining / FREE_MINING_RATE_PER_SEC;
+//       setDailyResetCountdown(formatCountdown(secondsLeft));
+//     }, 1000);
+//     return () => clearInterval(interval);
+//   }, [earningState.currentEarnings]);
+
+//   // Add this state for live progress
+//   const [, setStakingProgress] = useState(0);
+
+//   // Add this effect for live progress updates
+//   useEffect(() => {
+//     if (user?.last_deposit_date) {
+//       setStakingProgress(calculateStakingProgress(user.last_deposit_date));
+//     }
+//   }, [user?.last_deposit_date]);
+
+//   // 24h mining: progress toward daily target
+//   const earningsProgress = Math.min((earningState.currentEarnings / FREE_MINING_TON_PER_DAY) * 100, 100);
+
+
+//   // // Add this state near your other state declarations
+//   // const [showWhitelistModal, setShowWhitelistModal] = useState(false);
+
+//   // // Add this handler
+//   // const handleWhitelistSuccess = () => {
+//   //   showSnackbar({
+//   //     message: 'Wallet Whitelisted',
+//   //     description: 'Your wallet has been successfully whitelisted'
+//   //   });
+//   //   // Refresh user data
+//   //   updateUserData({ id: user?.id });
+//   // };
+
+//   // Add state
+//   const [showWithdrawalInfo, setShowWithdrawalInfo] = useState(false);
+
+//   const [showRoiBreakdown, setShowRoiBreakdown] = useState<boolean>(false);
+
+//   // Add these state variables near your other state declarations
+//   const [taskVerifications, setTaskVerifications] = useState<Record<TaskType, { verified: boolean; loading: boolean; cooldown: boolean; joined: boolean }>>({
+//     telegram: { verified: false, loading: false, cooldown: false, joined: false },
+//     twitter: { verified: false, loading: false, cooldown: false, joined: false },
+//     referral: { verified: false, loading: false, cooldown: false, joined: false },
+//     telegram_channel: { verified: false, loading: false, cooldown: false, joined: false }
+//   });
+
+//   // Add this type definition
+//   type TaskType = 'telegram' | 'twitter' | 'referral' | 'telegram_channel';
+
+//   // Add this effect to load saved verification status
+//   useEffect(() => {
+//     if (user?.id) {
+//       // Load saved verification status from localStorage
+//       const savedStatus = localStorage.getItem(`task_status_${user.id}`);
+//       if (savedStatus) {
+//         try {
+//           const parsed = JSON.parse(savedStatus);
+//           // Ensure all required properties exist
+//           const safeStatus = {
+//             telegram: { verified: false, loading: false, cooldown: false, joined: false, ...parsed.telegram },
+//             twitter: { verified: false, loading: false, cooldown: false, joined: false, ...parsed.twitter },
+//             referral: { verified: false, loading: false, cooldown: false, joined: false, ...parsed.referral },
+//             telegram_channel: { verified: false, loading: false, cooldown: false, joined: false, ...parsed.telegram_channel }
+//           };
+//           setTaskVerifications(safeStatus);
+//         } catch (e) {
+//           console.error('Error parsing saved task status:', e);
+//         }
+//       }
+      
+//       // For now, let's just rely on localStorage and not query the database
+//       // This avoids the error with the missing table
+//     }
+//   }, [user?.id]);
+
+ 
+//   // Add these state variables near your other state declarations
+//   const [notifications, setNotifications] = useState<Array<{
+//     id: string;
+//     title: string;
+//     message: string;
+//     time: string;
+//     read: boolean;
+//     type: 'info' | 'success' | 'warning' | 'error';
+//   }>>([
+//     {
+//       id: '1',
+//       title: 'Getting Started with TON Stake',
+//       message: 'To activate your account and start earning:\n\n1. Click the "Stake" button at the top of the screen\n2. Connect your TON wallet if not already connected\n3. Enter the amount you want to stake (minimum 10 TON recommended)\n4. Confirm the transaction in your wallet\n\nOnce staked, you\'ll start earning passive income immediately!',
+//       time: new Date(Date.now() - 3600000).toISOString(),
+//       read: false,
+//       type: 'info'
+//     },
+//     {
+//       id: '2',
+//       title: 'Join Our Community',
+//       message: 'Connect with fellow TON Stake users in our community forum! Share strategies, get help, and stay updated on the latest developments. Your participation makes our community stronger.\n\nJoin our Telegram: https://t.me/tonstakeit',
+//       time: new Date(Date.now() - 86400000).toISOString(),
+//       read: false,
+//       type: 'success'
+//     },
+//     {
+//       id: '3',
+//       title: 'TON Fortune Stakers NFT Launch',
+//       message: 'Mint your TON Fortune Stakers NFT to join the whitelist for weekly TON distributions.',
+//       time: new Date(Date.now() - 86400000).toISOString(),
+//       read: false,
+//       type: 'warning'
+//     }
+//   ]);
+
+//   // Add this state variable near your other state declarations
+//   const [selectedNotification, setSelectedNotification] = useState<{
+//     id: string;
+//     title: string;
+//     message: string;
+//     time: string;
+//     read: boolean;
+//     type: 'info' | 'success' | 'warning' | 'error';
+//   } | null>(null);
+
+//   // Add this effect to load notifications on component mount
+//   useEffect(() => {
+//     // Load saved notifications from localStorage
+//     const savedNotifications = localStorage.getItem('notifications');
+//     if (savedNotifications) {
+//       try {
+//         const parsedNotifications = JSON.parse(savedNotifications);
+//         setNotifications(parsedNotifications);
+//         console.log('Loaded notifications from localStorage:', parsedNotifications);
+//       } catch (e) {
+//         console.error('Error parsing saved notifications:', e);
+//       }
+//     }
+//   }, []);
+
+
+//   // Save notifications whenever they change
+//   useEffect(() => {
+//     localStorage.setItem('notifications', JSON.stringify(notifications));
+//   }, [notifications]);
+
+//   if (isLoading) {
+//     return (
+//       <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100">
+//         <div className="relative flex flex-col items-center">
+//           {/* Fan/Turbine Loading Animation */}
+//           <div className="relative w-16 h-16">
+//             {/* Center circle with glow effect */}
+//             <div className="absolute inset-0 flex items-center justify-center">
+//               <div className="relative">
+//                 <div className="absolute inset-0 bg-blue-500/50 rounded-full blur-md animate-pulse"></div>
+//                 <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full animate-pulse"></div>
+//               </div>
+//             </div>
+            
+//             {/* Enhanced Fan blades with better gradients and effects */}
+//             {[...Array(4)].map((_, i) => (
+//               <div
+//                 key={i}
+//                 className="absolute w-16 h-2 rounded-full"
+//                 style={{
+//                   transform: `rotate(${i * 90}deg) translateY(-50%)`,
+//                   top: '50%',
+//                   left: '0',
+//                   transformOrigin: 'center',
+//                   animation: `fan-spin 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
+//                   background: `
+//                     linear-gradient(
+//                       90deg,
+//                       rgba(59,130,246,0.1) 0%,
+//                       rgba(59,130,246,0.8) 30%,
+//                       rgba(59,130,246,1) 50%,
+//                       rgba(59,130,246,0.8) 70%,
+//                       rgba(59,130,246,0.1) 100%
+//                     )
+//                   `,
+//                   boxShadow: `
+//                     0 0 8px rgba(59,130,246,0.3),
+//                     0 0 12px rgba(59,130,246,0.2),
+//                     inset 0 0 4px rgba(59,130,246,0.4)
+//                   `,
+//                   filter: 'blur(0.5px)',
+//                   opacity: 0.9
+//                 }}
+//               />
+//             ))}
+            
+//             {/* Secondary fan blades for depth effect */}
+//             {[...Array(4)].map((_, i) => (
+//               <div
+//                 key={`secondary-${i}`}
+//                 className="absolute w-12 h-1.5 rounded-full"
+//                 style={{
+//                   transform: `rotate(${i * 90 + 45}deg) translateY(-50%)`,
+//                   top: '50%',
+//                   left: '0',
+//                   transformOrigin: 'center',
+//                   animation: `fan-spin 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse`,
+//                   background: `
+//                     linear-gradient(
+//                       90deg,
+//                       rgba(59,130,246,0.05) 0%,
+//                       rgba(59,130,246,0.4) 50%,
+//                       rgba(59,130,246,0.05) 100%
+//                     )
+//                   `,
+//                   boxShadow: '0 0 4px rgba(59,130,246,0.2)',
+//                   filter: 'blur(0.5px)',
+//                   opacity: 0.6
+//                 }}
+//               />
+//             ))}
+            
+//             {/* Outer ring with gradient border */}
+//             <div className="absolute inset-0 rounded-full">
+//               <div className="absolute inset-0 rounded-full border-2 border-blue-500/20 animate-pulse"></div>
+//               <div className="absolute inset-0 rounded-full border-2 border-blue-500/10 animate-ping"></div>
+//             </div>
+            
+//             {/* Particle effects */}
+//             {[...Array(8)].map((_, i) => (
+//               <div
+//                 key={`particle-${i}`}
+//                 className="absolute w-1 h-1 bg-blue-400 rounded-full"
+//                 style={{
+//                   top: '50%',
+//                   left: '50%',
+//                   transform: `rotate(${i * 45}deg) translateX(30px)`,
+//                   animation: `particle-pulse ${1 + i * 0.2}s ease-in-out infinite`
+//                 }}
+//               />
+//             ))}
+//           </div>
+          
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   if (error) {
+//     return (
+//       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+//         <div className="text-center p-4">
+//           <p className="text-red-600 font-medium">{error}</p>
+//           <p className="mt-2 text-gray-700">Please open this app in Telegram</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="w-full min-h-screen relative overflow-hidden">
+//          <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-white to-blue-100">
+//           {/* Gradient Background */}
+//           <div className="absolute inset-0 bg-gradient-to-b from-blue-50 via-white to-blue-50" />
+          
+//           {/* Animated Gradient Orbs */}
+//           <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200/30 rounded-full blur-[128px] animate-pulse" />
+//           <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-blue-300/20 rounded-full blur-[128px] animate-pulse delay-1000" />
+          
+//           {/* Subtle Grid */}
+//           <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.05)_1px,transparent_1px)] bg-[size:64px_64px]" />
+          
+//           {/* Star Field */}
+//           <div className="absolute inset-0" 
+//             style={{
+//               background: 'radial-gradient(circle at center, transparent 0%, rgba(219,234,254,0.3) 100%), ' +
+//                          'repeating-radial-gradient(circle at center, #3b82f6 0, #3b82f6 1px, transparent 1px, transparent 100%) 50% 50% / 24px 24px'
+//             }} 
+//           />
+//         </div>
+//       {!isLoading && user && showOnboarding && <OnboardingScreen />}
+//       {/* Network Status Bar
+//       <ShoutboxHeader onTabChange={setCurrentTab} /> */}
+
+//       {/* Main Content Area */}
+//       <div className="flex-1">
+
+//         {currentTab === 'home' && (
+//           <div className="flex-1 p-4 sm:p-6 space-y-2 overflow-y-auto">
+//             <div className="relative overflow-hidden rounded-lg p-3 bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700">
+//               {/* Simple background */}
+//               <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 to-purple-900/10"></div>
+              
+//               {/* Single animated particle */}
+//               <div className="absolute top-2 right-2 w-1 h-1 rounded-full bg-blue-400 animate-pulse"></div>
+
+//               <div className="relative z-10">
+//                 <div className="relative overflow-hidden rounded-xl p-4 border border-blue-500/30 shadow-xl mt-8">
+//               {/* Animated gradient background */}
+//               <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-blue-100/10 to-blue-200/10 animate-gradient-slow"></div>
+              
+//               {/* Decorative elements */}
+//               <div className="absolute inset-0 bg-grid-blue/[0.03] bg-[length:20px_20px]"></div>
+//               <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-blue-500/10 blur-3xl"></div>
+//               <div className="absolute -bottom-20 -left-20 w-40 h-40 rounded-full bg-cyan-500/10 blur-3xl"></div>
+              
+//               {/* Subtle animated particles */}
+//               <div className="absolute top-1/4 right-1/3 w-2 h-2 rounded-full bg-blue-400/30 blur-sm animate-float"></div>
+//               <div className="absolute bottom-1/3 left-1/4 w-3 h-3 rounded-full bg-cyan-400/20 blur-sm animate-float-slow"></div>
+              
+//               <div className="relative z-10">
+//                 <div className="flex justify-between items-center mb-4">
+//                   <div className="flex items-center gap-2">
+//                     <div className="relative">
+//                       <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full opacity-75 blur-sm"></div>
+//                       <div className="relative w-5 h-5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
+//                         <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+//                       </div>
+//                     </div>
+//                     <span className="text-sm font-medium text-white">Available Earnings</span>
+//                   </div>
+                  
+//                   <button
+//                     onClick={() => setShowWithdrawalInfo(true)}
+//                     className={`group relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-600/20 ${isWithdrawing ? 'opacity-50 cursor-not-allowed' : ''}`}
+//                   >
+//                     <span className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600"></span>
+//                     <span className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+//                     <span className="relative z-10 text-white">Claim TON</span>
+//                     <svg className="w-4 h-4 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//                     </svg>
+//                   </button>
+//                 </div>
+
+//                 <div className="flex items-baseline gap-2 mb-3">
+//                   <span className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
+//                     {formatEarnings(earningState.currentEarnings)}
+//                   </span>
+//                   <div className="flex flex-col">
+//                     <span className="text-sm font-medium text-white/80">TON</span>
+//                     <span className="text-xs text-white/50">≈ ${(earningState.currentEarnings * tonPrice).toFixed(2)}</span>
+//                   </div>
+//                 </div>
+
+//                 {renderEarningsSection()}
+                
+//                 {/* Progress Section */}
+//                 {!user?.balance || user.balance <= 0 ? (
+//                   <div className="mt-4 text-center p-3 rounded-lg bg-white/5 border border-blue-500/10">
+//                     <div className="flex items-center justify-center gap-2">
+//                       <svg className="w-5 h-5 text-blue-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//                       </svg>
+//                       <span className="text-sm text-white/60">Start staking to see your earnings progress!</span>
+//                     </div>
+//                   </div>
+//                 ) : (
+//                   <div className="mt-4">
+//                     {/* Progress Bar with animated gradient */}
+//                     <div className="w-full bg-white/10 rounded-full h-2 p-0.5">
+//                       <div
+//                         className="bg-gradient-to-r from-blue-400 via-white to-cyan-400 h-1 rounded-full transition-all duration-1000 relative"
+//                         style={{
+//                           width: `${Math.min(earningsProgress, 100)}%`
+//                         }}
+//                       >
+//                         {/* Animated glow effect */}
+//                         <div className="absolute inset-0 rounded-full bg-white/30 blur-sm animate-pulse-slow"></div>
+//                       </div>
+//                     </div>
+                    
+//                     <div className="flex items-center justify-between mt-2">
+//                       <span className="text-xs text-white/60">Earnings Progress</span>
+//                       <span className="text-xs font-medium text-blue-400">
+//                         {Math.min(earningsProgress, 100).toFixed(1)}%
+//                       </span>
+//                     </div>
+                    
+//                     {/* Earnings Info Card */}
+//                     <div className="mt-3 p-3 rounded-lg bg-gradient-to-br from-black/80 to-blue-950/20 border border-blue-500/20 backdrop-blur-sm">
+//                       <div className="flex items-center justify-between mb-2">
+//                         <span className="text-xs font-medium text-white/70">Current Earnings</span>
+//                         <span className="text-xs font-medium text-white bg-blue-500/20 px-2 py-0.5 rounded-full">
+//                           {formatEarnings(earningState.currentEarnings)} TON
+//                         </span>
+//                       </div>
+                      
+//                       <div className="flex items-center justify-between mb-2">
+//                         <span className="text-xs font-medium text-white/70">Potential Total Earnings</span>
+//                         <div className="flex items-center gap-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 px-2 py-0.5 rounded-full">
+//                           <span className="text-xs font-medium text-blue-400">
+//                             {formatEarnings(calculatePotentialEarnings(user.balance))} TON
+//                           </span>
+//                           <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+//                           </svg>
+//                         </div>
+//                       </div>
+                      
+//                       <div className="grid grid-cols-2 gap-2 mt-3">
+//                         <div className="bg-white/5 rounded-lg p-2 border border-blue-500/10">
+//                           <span className="text-xs text-white/60 block mb-1">Starting Daily Rate</span>
+//                           <span className="text-sm font-medium text-blue-400 flex items-center gap-1">
+//                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+//                             </svg>
+//                             +1.00%
+//                           </span>
+//                         </div>
+                        
+//                         <div className="bg-white/5 rounded-lg p-2 border border-cyan-500/10">
+//                           <span className="text-xs text-white/60 block mb-1">Maximum Daily Rate</span>
+//                           <span className="text-sm font-medium text-cyan-400 flex items-center gap-1">
+//                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+//                             </svg>
+//                             +11.00%
+//                           </span>
+//                         </div>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//               </div>
+//             </div>
+//           </div>
+//         )}
+        
+//         {currentTab === 'mine' && (
+//   <div className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
+//   <MiningSection />
+//   </div>
+//         )}
+
+//         {currentTab === 'network' && (
+//           <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+//             <ReferralSystem 
+//             />
+//           </div>
+//         )}
+
+//         {currentTab === 'gmp' && (
+//           <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+//             <GMPLeaderboard />
+//           </div>
+//         )}
+
+//         {currentTab === 'tasks' && (
+//         <>
+//         <div className="relative flex-1 p-custom space-y-4 overflow-y-auto">
+//     {/* Header */}
+//     <div className="flex items-center justify-between mb-4">
+//       <div className="flex items-center gap-3">
+//         <svg className="w-6 h-6 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//         </svg>
+//         <h2 className="text-lg font-medium text-white">Get Whitelisted</h2>
+//       </div>
+//       <a 
+//                   href="https://getgems.io/tonstakeit" 
+//                   target="_blank" 
+//                   rel="noopener noreferrer"
+//                   className="px-4 py-1.5 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all duration-200 text-sm flex items-center gap-2"
+//                 >
+//                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+//                     <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 14l-4-4 1.41-1.41L11 12.17l6.59-6.59L19 7l-8 8z"/>
+//                   </svg>
+//                   Whitelist
+//                 </a>
+//     </div>
+
+//     <LotteryCard 
+//       price={100}
+//       title="Daily Lottery"
+//       description="Try your luck in our daily lottery draw"
+//       onPurchase={() => {
+//         // Handle purchase logic
+//         console.log('Lottery ticket purchased');
+//       }}
+//     />
+
+// <div className="flex items-center justify-between mb-4">
+//       <div className="flex items-center gap-3">
+//         <svg className="w-6 h-6 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//         </svg>
+//         <h2 className="text-lg font-medium text-white">Latest Updates</h2>
+//       </div>
+//       <a 
+//                   href="https://t.me/tonstakeit" 
+//                   target="_blank" 
+//                   rel="noopener noreferrer"
+//                   className="px-4 py-1.5 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all duration-200 text-sm flex items-center gap-2"
+//                 >
+//                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+//                     <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.12.098.153.228.166.331.032.259.019.599-.077 1.466z"/>
+//                   </svg>
+//                   Open Forum
+//                 </a>
+//     </div>
+
+//     <div className="space-y-4">
+//               {/* New Update Card - Season 1 Launch */}
+//               <div className="bg-gradient-to-br from-black to-purple-900/30 rounded-xl p-6 border border-purple-500/30 relative overflow-hidden">
+//                 <div className="absolute -right-16 -bottom-16 w-64 h-64 rounded-full bg-purple-500/10 blur-2xl"></div>
+//                 <div className="absolute -left-16 -top-16 w-64 h-64 rounded-full bg-blue-500/10 blur-2xl"></div>
+                
+//                 <div className="flex items-center gap-3 mb-4">
+//                   <div className="w-12 h-12 bg-gradient-to-br from-purple-500/30 to-blue-500/30 rounded-full flex items-center justify-center">
+//                     <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a4 4 0 00-4-4H8.8a4 4 0 00-4 4v12h8zm0 0V5.5A2.5 2.5 0 0114.5 3h1A2.5 2.5 0 0118 5.5V8m-6 0h6" />
+//                     </svg>
+//                   </div>
+//                   <div>
+//                     <h3 className="text-xl font-bold text-white">STK Private Sale Price Officially Set — Backed by NFT Demand.</h3>
+//                     <p className="text-sm text-purple-300/80">June 7, 2025</p>
+//                   </div>
+//                 </div>
+                
+//                 <div className="space-y-4">
+//                   <ul className="space-y-3">
+//                     <li className="flex items-start gap-2">
+//                       <svg className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+//                       </svg>
+//                       <span className="text-white/90">🔥 173 NFTs Already Minted — Reveal Coming at 250!</span>
+//                     </li>
+//                     <li className="flex items-start gap-2">
+//                       <svg className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+//                       </svg>
+//                       <span className="text-white/90">💎 The TONers Foundation has officially determined the STK Private Sale Price based on on-chain performance and NFT value.</span>
+//                     </li>
+//                     <li className="flex items-start gap-2">
+//                       <svg className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+//                       </svg>
+//                       <span className="text-white/90">🚀 TGE (Token Generation Event) will be officially announced soon.... secure your spot in TON staking history!</span>
+//                     </li>
+//                   </ul>
+
+//                   <div className="mt-6">
+// <a 
+//   href="https://getgems.io/collection/EQBpQbkNRhzCAalWxnFtU5z28rS_RCxBlEuC010bAjsh3TjU" 
+//   target="_blank" 
+//   rel="noopener noreferrer"
+//   className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg inline-flex items-center gap-2 transition-all duration-200 shadow-lg shadow-purple-500/20"
+// >
+//   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+//   </svg>
+//   EXPLORE MINTED NFTs
+// </a>
+//           </div>
+                  
+//                   {/* <NFTMinter 
+//               onStatusChange={(status, hasMinted) => {
+//                 // Update the parent component's state when minting status changes
+//                 setUserHasMinted(hasMinted);
+//                 console.log("NFT status:", status, "Has minted:", hasMinted);
+//               }}
+//               onMintSuccess={async () => {
+//                 // Update state when mint is successful
+//                 setUserHasMinted(true);
+//                 console.log("Mint successful!");
+//               }}
+//             /> */}
+//                 </div>
+//               </div>
+
+             
+//               {/* Community Resources */}
+//               <div className="bg-gradient-to-br from-black to-purple-900/30 rounded-xl p-6 border border-blue-500/20">
+//                 <h3 className="text-lg font-semibold text-white mb-4">Community Resources</h3>
+//                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                   <a 
+//                     href="https://t.me/tonstakeit" 
+//                     target="_blank" 
+//                     rel="noopener noreferrer"
+//                     className="bg-white/5 hover:bg-white/10 rounded-lg p-4 border border-white/10 transition-colors flex items-center gap-3"
+//                   >
+//                     <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+//                       <svg className="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+//                         <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.015-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.015 3.333-1.386 4.025-1.627 4.477-1.635.099-.002.321.023.465.141.12.098.153.228.166.331.032.259.019.599-.077 1.466z"/>
+//                       </svg>
+//                     </div>
+//                     <div>
+//                       <h4 className="font-medium text-white">Telegram Channel</h4>
+//                       <p className="text-sm text-white/60">Official announcements and updates</p>
+//                     </div>
+//                   </a>
+                  
+//                   <a 
+//                     href="https://x.com/TonStakeit" 
+//                     target="_blank" 
+//                     rel="noopener noreferrer"
+//                     className="bg-white/5 hover:bg-white/10 rounded-lg p-4 border border-white/10 transition-colors flex items-center gap-3"
+//                   >
+//                     <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+//                       <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+//                         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+//                       </svg>
+//                     </div>
+//                     <div>
+//                       <h4 className="font-medium text-white">X (Twitter)</h4>
+//                       <p className="text-sm text-white/60">Follow for the latest news</p>
+//                     </div>
+//                   </a>
+                  
+//                   <a 
+//                     href="https://getgems.io/collection/EQBpQbkNRhzCAalWxnFtU5z28rS_RCxBlEuC010bAjsh3TjU" 
+//                     target="_blank" 
+//                     rel="noopener noreferrer"
+//                     className="bg-white/5 hover:bg-white/10 rounded-lg p-4 border border-white/10 transition-colors flex items-center gap-3"
+//                   >
+//                     <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+//                       <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a4 4 0 00-4-4H8.8a4 4 0 00-4 4v12h8zm0 0V5.5A2.5 2.5 0 0114.5 3h1A2.5 2.5 0 0118 5.5V8m-6 0h6" />
+//                       </svg>
+//                     </div>
+//                     <div>
+//                       <h4 className="font-medium text-white">TONERS Community Pass</h4>
+//                       <p className="text-sm text-white/60">Get your TON Fortune Stakers NFT</p>
+//                     </div>
+//                   </a>
+//                 </div>
+//               </div>
+//             </div>
+   
+//   </div>
+//         </>
+//         )}
+
+//         {currentTab === 'token' && (
+//           <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+//             <TonWallet/>
+//             {/* <TokenLaunchpad /> */}
+//           </div>
+//         )}
+
+//       </div>
+
+//       {/* Deposit Modal */}
+//       {showDepositModal && (
+//         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+//           <div className="bg-black rounded-xl w-full max-w-md border border-blue-500/20 shadow-xl shadow-blue-500/10">
+//             <div className="p-6">
+//               <div className="flex justify-between items-center mb-6">
+//                 <h3 className="text-xl font-semibold text-white">Deposit TON</h3>
+//                 <button 
+//                   onClick={() => {
+//                     setShowDepositModal(false);
+//                     setDepositStatus('idle');
+//                     setCustomAmount(''); // Reset custom amount
+//                   }}
+//                   className="text-white/60 hover:text-white"
+//                 >
+//                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+//                   </svg>
+//                 </button>
+//               </div>
+
+//               {depositStatus === 'pending' ? (
+//                 <div className="text-center py-8">
+//                   <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+//                   <p className="text-white font-medium">Verifying Transaction...</p>
+//                   <p className="text-sm text-white/60 mt-2">Please wait while we confirm your deposit</p>
+//                 </div>
+//               ) : (
+//                 <>
+//                   {/* Quick Select Text */}
+//                   <div className="text-sm text-white/60 mb-3">
+//                     Quick Select:
+//                   </div>
+
+//                   {/* Predefined Amounts */}
+//                   <div className="grid grid-cols-3 gap-2 mb-6">
+//                     {[1, 5, 10, 50, 100, 500].map((amount) => (
+//                       <button
+//                         key={amount}
+//                         onClick={() => {
+//                           setCustomAmount(amount.toString());
+//                           handleDeposit(amount);
+//                         }}
+//                         className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg text-blue-400 hover:text-blue-300 transition-colors"
+//                       >
+//                         {amount} TON
+//                       </button>
+//                     ))}
+//                   </div>
+
+//                   {/* Custom Amount Section */}
+//                   <div className="relative mb-6">
+//                     <div className="flex items-center gap-2 mb-3">
+//                       <span className="text-sm text-white/60">Or enter custom amount:</span>
+//                     </div>
+                    
+//                     {/* Custom Amount Input with Deposit Button */}
+//                     <div className="space-y-3">
+//                       <div className="relative">
+//                         <input
+//                           type="number"
+//                           placeholder="Enter amount"
+//                           min="1"
+//                           step="0.1"
+//                           value={customAmount}
+//                           onChange={(e) => setCustomAmount(e.target.value)}
+//                           className="w-full px-4 py-3 bg-blue-900/10 border border-blue-500/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500/50"
+//                         />
+//                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-sm">
+//                           TON
+//                         </div>
+//                       </div>
+                      
+//                       {/* Deposit Button */}
+//                       <button
+//                         onClick={() => {
+//                           const amount = parseFloat(customAmount);
+//                           if (!isNaN(amount) && amount >= 1) {
+//                             handleDeposit(amount);
+//                           } else {
+//                             showSnackbar({
+//                               message: 'Invalid Amount',
+//                               description: 'Please enter an amount greater than or equal to 1 TON'
+//                             });
+//                           }
+//                         }}
+//                         disabled={!customAmount || parseFloat(customAmount) < 1}
+//                         className={`w-full py-3 rounded-lg font-medium transition-all duration-200 
+//                           ${!customAmount || parseFloat(customAmount) < 1
+//                             ? 'bg-blue-500/50 text-white/50 cursor-not-allowed'
+//                             : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/25'
+//                           }`}
+//                       >
+//                         Deposit {customAmount ? `${customAmount} TON` : 'TON'}
+//                       </button>
+//                     </div>
+//                   </div>
+
+//                   {/* Info Section with Calculator */}
+//                   <div className="bg-blue-900/10 rounded-lg p-4 space-y-4 border border-blue-500/10">
+//                     {/* Basic Info */}
+//                     <div className="space-y-2">
+//                       <div className="flex items-center gap-2 text-sm text-white/60">
+//                         <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//                         </svg>
+//                         <span>Minimum deposit: 1 TON</span>
+//                       </div>
+//                       <div className="flex items-center gap-2 text-sm text-white/60">
+//                         <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+//                         </svg>
+//                         <span>Lock period: 100 days</span>
+//                       </div>
+//                     </div>
+
+//                     {/* ROI Calculator */}
+//                     <div className="pt-3 border-t border-blue-500/10">
+//                       <div className="flex items-center gap-2 mb-3">
+//                         <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+//                         </svg>
+//                         <span className="text-sm font-medium text-white">Earnings Calculator</span>
+//                       </div>
+
+//                       {/* ROI Breakdown with Toggle */}
+//                       <div className="mb-3">
+//                         <button 
+//                           onClick={() => setShowRoiBreakdown(!showRoiBreakdown)}
+//                           className="flex items-center justify-between w-full bg-blue-500/5 rounded-lg p-2 mb-2 hover:bg-blue-500/10 transition-colors"
+//                         >
+//                           <span className="text-sm font-medium text-white">ROI Breakdown</span>
+//                           <svg 
+//                             className={`w-4 h-4 text-blue-400 transition-transform duration-200 ${showRoiBreakdown ? 'rotate-180' : ''}`} 
+//                             fill="none" 
+//                             stroke="currentColor" 
+//                             viewBox="0 0 24 24"
+//                           >
+//                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+//                           </svg>
+//                         </button>
+                        
+//                         {showRoiBreakdown && (
+//                           <div className="grid grid-cols-2 gap-2">
+//                             {[
+//                               { days: '1-5', roi: '1.0%' },
+//                               { days: '6-10', roi: '1.5%' },
+//                               { days: '11-15', roi: '2.0%' },
+//                               { days: '16-20', roi: '2.5%' },
+//                               { days: '21-25', roi: '3.0%' },
+//                               { days: '26+', roi: '+0.5% per 5 days' }
+//                             ].map((period) => (
+//                               <div key={period.days} className="bg-blue-500/5 rounded-lg p-2">
+//                                 <div className="text-xs text-white/40">Days {period.days}</div>
+//                                 <div className="text-sm font-medium text-blue-400">{period.roi}</div>
+//                               </div>
+//                             ))}
+//                           </div>
+//                         )}
+//                       </div>
+
+//                       {/* Calculator Results */}
+//                       {customAmount && parseFloat(customAmount) >= 1 && (
+//                         <div className="space-y-3">
+//                           <div className="bg-blue-500/5 rounded-lg p-3">
+//                             <div className="grid grid-cols-2 gap-3">
+//                               <div>
+//                                 <div className="text-xs text-white/40 mb-1">Daily Earnings (Start)</div>
+//                                 <div className="text-sm font-medium text-white">
+//                                   {(parseFloat(customAmount) * 0.01).toFixed(4)} TON
+//                                 </div>
+//                                 <div className="text-xs text-white/40">
+//                                   ≈ ${((parseFloat(customAmount) * 0.01) * tonPrice).toFixed(2)}
+//                                 </div>
+//                               </div>
+//                               <div>
+//                                 <div className="text-xs text-white/40 mb-1">Daily Earnings (Max)</div>
+//                                 <div className="text-sm font-medium text-white">
+//                                   {(parseFloat(customAmount) * 0.11).toFixed(4)} TON
+//                                 </div>
+//                                 <div className="text-xs text-white/40">
+//                                   ≈ ${((parseFloat(customAmount) * 0.11) * tonPrice).toFixed(2)}
+//                                 </div>
+//                               </div>
+//                             </div>
+//                           </div>
+
+//                           <div className="bg-blue-500/5 rounded-lg p-3">
+//                             <div className="grid grid-cols-2 gap-3">
+//                               <div>
+//                                 <div className="text-xs text-white/40 mb-1">Total Potential Earnings</div>
+//                                 <div className="text-sm font-medium text-white">
+//                                   {calculateTotalEarnings(parseFloat(customAmount)).toFixed(4)} TON
+//                                 </div>
+//                                 <div className="text-xs text-white/40">
+//                                   ≈ ${(calculateTotalEarnings(parseFloat(customAmount)) * tonPrice).toFixed(2)}
+//                                 </div>
+//                               </div>
+//                               <div>
+//                                 <div className="text-xs text-white/40 mb-1">Total Return</div>
+//                                 <div className="text-sm font-medium text-blue-400">
+//                                   {(parseFloat(customAmount) + calculateTotalEarnings(parseFloat(customAmount))).toFixed(4)} TON
+//                                 </div>
+//                                 <div className="text-xs text-white/40">
+//                                   Initial + Earnings
+//                                 </div>
+//                               </div>
+//                             </div>
+//                           </div>
+//                         </div>
+//                       )}
+//                     </div>
+//                   </div>
+//                 </>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+// {/* STK Buy Modal */}
+//       {showSTKBuyModal && (
+//   <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+//     <div className="bg-gradient-to-br from-[#0A0A1A] to-[#0A0A1F] rounded-2xl border border-blue-500/30 shadow-xl w-full max-w-lg overflow-hidden relative">
+//       {/* Background decorative elements */}
+//       <div className="absolute inset-0 bg-grid-white/[0.02] bg-[length:20px_20px]"></div>
+//       <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-blue-500/20 blur-3xl"></div>
+//       <div className="absolute -bottom-24 -left-24 w-48 h-48 rounded-full bg-purple-500/20 blur-3xl"></div>
+      
+//       {/* Modal Header */}
+//       <div className="relative p-4 border-b border-blue-500/30">
+//         <div className="flex items-center justify-between">
+//           <h3 className="text-lg font-medium text-white">Buy STK Tokens</h3>
+//           <button 
+//             onClick={() => setShowSTKBuyModal(false)}
+//             className="text-white/60 hover:text-white/80 transition-colors"
+//           >
+//             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+//             </svg>
+//           </button>
+//         </div>
+//       </div>
+
+//       {/* Modal Content */}
+//       <div className="relative p-4">
+//         {/* Input Amount Section */}
+//         <div className="space-y-4">
+//           <div className="bg-black/40 rounded-xl p-4 border border-blue-500/20">
+//             <div className="flex items-center justify-between mb-2">
+//               <span className="text-sm text-white/60">Amount to Buy</span>
+//               <span className="text-sm text-white/60">Balance: {isLoadingBalance ? '...' : `${Number(walletBalance).toFixed(2)} TON`}</span>
+//             </div>
+//             <div className="flex items-center gap-2">
+//               <input
+//                 type="number"
+//                 value={stkAmount}
+//                 onChange={(e) => {
+//                   const value = parseFloat(e.target.value);
+//                   setStkAmount(value);
+//                   // Calculate TON cost (1 STK = 0.1 TON)
+//                   setTonCost(value * 0.1);
+//                 }}
+//                 placeholder="0.00"
+//                 className="bg-transparent text-2xl font-medium text-white outline-none flex-1"
+//               />
+//               <span className="text-xl font-medium text-white/80">STK</span>
+//             </div>
+//           </div>
+
+//           {/* Cost Display */}
+//           <div className="bg-black/40 rounded-xl p-4 border border-purple-500/20">
+//             <div className="flex items-center justify-between mb-2">
+//               <span className="text-sm text-white/60">Cost in TON</span>
+//               <span className="text-sm text-white/60">≈ ${(tonCost * tonPrice).toFixed(2)}</span>
+//             </div>
+//             <div className="flex items-center gap-2">
+//               <span className="text-2xl font-medium text-white">{tonCost.toFixed(2)}</span>
+//               <span className="text-xl font-medium text-white/80">TON</span>
+//             </div>
+//           </div>
+
+//           {/* Quick Amount Buttons */}
+//           <div className="grid grid-cols-4 gap-2">
+//             {[1000, 2500, 5000, 10000].map((amount) => (
+//               <button
+//                 key={amount}
+//                 onClick={() => {
+//                   setStkAmount(amount);
+//                   setTonCost(amount * 0.001);
+//                 }}
+//                 className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-blue-400 transition-all duration-200"
+//               >
+//                 {amount} STK
+//               </button>
+//             ))}
+//           </div>
+
+//           {/* Buy Button */}
+//           {/* <button
+//             onClick={handleBuySTK}
+//             disabled={isProcessing || tonCost <= 0 || tonCost > Number(walletBalance)}
+//             className={`w-full py-3 rounded-xl font-medium text-white relative overflow-hidden ${
+//               isProcessing || tonCost <= 0 || tonCost > Number(walletBalance)
+//                 ? 'bg-gray-500/40 cursor-not-allowed'
+//                 : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500'
+//             }`}
+//           >
+//             {isProcessing ? (
+//               <div className="flex items-center justify-center gap-2">
+//                 <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+//                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+//                   <path className="opacity-75" fill="currentColor" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+//                 </svg>
+//                 Processing...
+//               </div>
+//             ) : tonCost <= 0 ? (
+//               'Enter amount'
+//             ) : tonCost > Number(walletBalance) ? (
+//               'Insufficient balance'
+//             ) : (
+//               `Buy ${stkAmount} STK for ${tonCost.toFixed(2)} TON`
+//             )}
+//           </button> */}
+//         </div>
+
+//         {/* Info Section */}
+//         <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+//           <div className="flex items-start gap-2">
+//             <svg className="w-5 h-5 text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//             </svg>
+//             <div>
+//               <p className="text-sm text-white/70">STK tokens are governance tokens that provide voting rights and special privileges in the TON Stakers ecosystem.</p>
+//               <p className="text-sm text-white/70 mt-2">1 STK = 0.1 TON</p>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   </div>
+//       )}
+
+//  {/* Withdrawal Info Modal */}
+//       <WithdrawalInfoModal
+//         isOpen={showWithdrawalInfo}
+//         onClose={() => setShowWithdrawalInfo(false)}
+//       />
+
+//          {/* Notification Detail Modal */}
+//       {selectedNotification && (
+//         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+//           <div className="bg-gray-900 border border-blue-500/30 rounded-xl w-full max-w-md max-h-[80vh] overflow-hidden shadow-xl animate-fade-in">
+//             <div className="p-4 border-b border-blue-500/20 flex justify-between items-center">
+//               <div className="flex items-center gap-3">
+//                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+//                   selectedNotification.type === 'info' ? 'bg-blue-500/20' :
+//                   selectedNotification.type === 'success' ? 'bg-green-500/20' :
+//                   selectedNotification.type === 'warning' ? 'bg-yellow-500/20' : 'bg-red-500/20'
+//                 }`}>
+//                   {selectedNotification.type === 'info' && (
+//                     <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+//                     </svg>
+//                   )}
+//                   {selectedNotification.type === 'success' && (
+//                     <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+//                     </svg>
+//                   )}
+//                   {selectedNotification.type === 'warning' && (
+//                     <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+//                     </svg>
+//                   )}
+//                   {selectedNotification.type === 'error' && (
+//                     <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+//                     </svg>
+//                   )}
+//                 </div>
+//                 <h3 className="font-medium text-white">{selectedNotification.title}</h3>
+//               </div>
+//               <button 
+//                 onClick={() => setSelectedNotification(null)}
+//                 className="text-white/60 hover:text-white"
+//               >
+//                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+//                 </svg>
+//               </button>
+//             </div>
+            
+//             <div className="p-4 max-h-[60vh] overflow-y-auto">
+//               {/* Format message with line breaks and links */}
+//               <div className="text-white/80 space-y-3">
+//                 {selectedNotification.message.split('\n').map((paragraph, index) => {
+//                   // Check if paragraph contains a URL
+//                   const urlRegex = /(https?:\/\/[^\s]+)/g;
+//                   const hasUrl = urlRegex.test(paragraph);
+                  
+//                   if (hasUrl) {
+//                     // Split by URLs and create elements with clickable links
+//                     const parts = paragraph.split(urlRegex);
+//                     const matches = paragraph.match(urlRegex) || [];
+                    
+//                     return (
+//                       <p key={index} className="leading-relaxed">
+//                         {parts.map((part, i) => {
+//                           // If this is an even-indexed part, it's text
+//                           if (i % 2 === 0) {
+//                             return part;
+//                           } 
+//                           // If this is an odd-indexed part, it's a URL
+//                           const url = matches[(i-1)/2];
+//                           return (
+//                             <a 
+//                               key={i} 
+//                               href={url} 
+//                               target="_blank" 
+//                               rel="noopener noreferrer"
+//                               className="text-blue-400 hover:text-blue-300 underline"
+//                             >
+//                               {url}
+//                             </a>
+//                           );
+//                         })}
+//                       </p>
+//                     );
+//                   }
+                  
+//                   return <p key={index} className="leading-relaxed">{paragraph}</p>;
+//                 })}
+//               </div>
+              
+//               <div className="mt-4 text-xs text-white/40 flex justify-between items-center">
+//                 <span>
+//                   {new Date(selectedNotification.time).toLocaleString([], {
+//                     year: 'numeric',
+//                     month: 'short',
+//                     day: 'numeric',
+//                     hour: '2-digit',
+//                     minute: '2-digit'
+//                   })}
+//                   </span>
+//                 <span>Notification ID: {selectedNotification.id}</span>
+//               </div>
+//                 </div>
+
+//             <div className="p-3 border-t border-blue-500/20 flex justify-end">
+//               {/* Add action buttons based on notification type */}
+//               {selectedNotification.type === 'info' && (
+//                 <button 
+//                   onClick={() => setSelectedNotification(null)}
+//                   className="px-4 py-2 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm transition-colors"
+//                 >
+//                   Got it
+//                 </button>
+//               )}
+              
+//               {selectedNotification.type === 'success' && (
+//                 <button 
+//                   onClick={() => setSelectedNotification(null)}
+//                   className="px-4 py-2 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm transition-colors"
+//                 >
+//                   Awesome
+//                 </button>
+//               )}
+              
+//               {selectedNotification.type === 'warning' && (
+//                 <div className="flex gap-3">
+//                   <button 
+//                     onClick={() => setSelectedNotification(null)}
+//                     className="px-4 py-2 rounded-full bg-white/5 text-white/70 hover:bg-white/10 text-sm transition-colors"
+//                   >
+//                     Dismiss
+//                   </button>
+//                   <button 
+//                     onClick={() => {
+//                       // Handle warning action - for example, open a link
+//                       if (selectedNotification.id === '3') {
+//                         window.open('https://t.me/tonstakeit', '_blank');
+//                       }
+//                       setSelectedNotification(null);
+//                     }}
+//                     className="px-4 py-2 rounded-full bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 text-sm transition-colors"
+//                   >
+//                     Learn More
+//                   </button>
+//                 </div>
+//               )}
+              
+//               {selectedNotification.type === 'error' && (
+//                 <div className="flex gap-3">
+//                   <button 
+//                     onClick={() => setSelectedNotification(null)}
+//                     className="px-4 py-2 rounded-full bg-white/5 text-white/70 hover:bg-white/10 text-sm transition-colors"
+//                   >
+//                     Dismiss
+//                   </button>
+//                   <button 
+//                     onClick={() => {
+//                       // Handle error action
+//                       setSelectedNotification(null);
+//                     }}
+//                     className="px-4 py-2 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm transition-colors"
+//                   >
+//                     Try Again
+//                   </button>
+//                 </div>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Offline Rewards Modal */}
+//       {showOfflineRewardsModal && (
+//         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+//           <div className="bg-black rounded-xl w-full max-w-md border border-blue-500/20">
+//             <div className="p-6">
+//               <div className="flex justify-between items-center mb-6">
+//                 <h3 className="text-xl font-semibold text-white">Offline Rewards</h3>
+//                 <button 
+//                   onClick={() => setShowOfflineRewardsModal(false)}
+//                   className="text-white/60 hover:text-white"
+//                 >
+//                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+//                   </svg>
+//                 </button>
+//               </div>
+
+//               <div className="text-center">
+//                 <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+//                   <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+//                   </svg>
+//                 </div>
+
+//                 <h4 className="text-lg font-semibold text-white mb-2">
+//                   You've Earned While Away!
+//                 </h4>
+//                 <p className="text-sm text-white/60 mb-6">
+//                   While you were offline, your staked TON continued to work for you.
+//                 </p>
+
+//                 <div className="bg-white/5 rounded-lg p-4 mb-6">
+//                   <div className="text-sm text-white/60 mb-1">Offline Earnings</div>
+//                   <div className="text-2xl font-bold text-green-400">
+//                     +{offlineRewardsAmount.toFixed(8)} TON
+//                   </div>
+//                 </div>
+
+//                 <button
+//                   onClick={handleClaimOfflineRewards}
+//                   className="w-full py-3 rounded-lg bg-green-500 hover:bg-green-600 text-white font-medium transition-all duration-200 shadow-lg shadow-green-500/25"
+//                 >
+//                   Claim Rewards
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Bottom Navigation */}
+//       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-blue-200/30 safe-area-pb z-40 shadow-lg shadow-blue-500/10">
+//         <div className="max-w-lg mx-auto px-2 md:px-4">
+//           <div className="grid grid-cols-2 items-center">
+//             {[
+//               // { id: 'mine', text: 'Mine', Icon: AiOutlineHome },
+//               { id: 'home', text: 'Stake', Icon: RiSafeLine },
+//               // { id: 'gmp', text: 'Top', Icon: FaTrophy },
+//               // { id: 'tasks', text: 'Lottery', Icon: BsNewspaper }, 
+//               // { id: 'network', text: 'Friends', Icon: FaUsers }, 
+//               { id: 'token', text: 'Profile', Icon: FaWallet }
+//             ].map(({ id, text, Icon }) => (
+//               <button 
+//                 key={id} 
+//                 onClick={() => setCurrentTab(id)}
+//                 className={`flex flex-col items-center py-3 md:py-4 w-full transition-all duration-300 relative ${
+//                   currentTab === id ? 'text-blue-600' : 'text-gray-400'
+//                 }`}
+//               >
+//                 {currentTab === id && (
+//                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-blue-500 rounded-b-full"></div>
+//                 )}
+//                 <Icon size={18} className="mb-1" />
+//                 <span className="text-[10px] md:text-xs font-medium tracking-wide truncate max-w-[64px] text-center">
+//                   {text}
+//                   </span>
+//               </button>
+//             ))}
+//           </div>
+//         </div>
+//       </div>
+
+//         {/* Add Snackbar component before closing div */}
+//         {isSnackbarVisible && (
+//           <Snackbar
+//             onClose={() => {
+//               setSnackbarVisible(false);
+//               if (snackbarTimeoutRef.current) {
+//                 clearTimeout(snackbarTimeoutRef.current);
+//               }
+//             }}
+//             duration={SNACKBAR_DURATION}
+//             description={snackbarDescription}
+//             after={
+//               <Button 
+//                 size="s" 
+//                 onClick={() => {
+//                   setSnackbarVisible(false);
+//                   if (snackbarTimeoutRef.current) {
+//                     clearTimeout(snackbarTimeoutRef.current);
+//                   }
+//                 }}
+//               >
+//                 Close
+//               </Button>
+//             }
+//             className="snackbar-top"
+//           >
+//             {snackbarMessage}
+//           </Snackbar>
+//         )}
+//       </div>
+//   );
+// };
+
+  
