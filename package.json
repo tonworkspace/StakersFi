@@ -14,9 +14,8 @@
     "preview": "vite preview",
     "predeploy": "npm run build"
   },
-
-  
   "dependencies": {
+    "@orbs-network/ton-access": "^2.3.3",
     "@ston-fi/api": "^0.21.0",
     "@ston-fi/sdk": "^2.4.0",
     "@supabase/supabase-js": "^2.48.1",
@@ -32,6 +31,7 @@
     "canvas-confetti": "^1.9.3",
     "cron": "^3.5.0",
     "eruda": "^3.0.1",
+    "framer-motion": "^12.23.24",
     "lucide-react": "^0.474.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -46,7 +46,6 @@
     "uuid": "^11.0.5",
     "zustand": "^5.0.3"
   },
-
   "devDependencies": {
     "@eslint/js": "^9.2.0",
     "@types/lodash": "^4.17.16",

@@ -28,7 +28,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ isOpen, onClose, onS
   };
 
   const calculateEstimatedRewards = (depositAmount: number) => {
-    const dailyRate = 0.01; // 1% daily
+    const dailyRate = 0.1; // 10% daily
     const dailyReward = depositAmount * dailyRate;
     const monthlyReward = dailyReward * 30;
     return {

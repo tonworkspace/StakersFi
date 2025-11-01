@@ -391,7 +391,7 @@ export const FAST_START_TIME_WINDOW = 24 * 60 * 60 * 1000; // 24 hours in millis
 // Update STAKING_CONFIG to include weekly rates
 export const STAKING_CONFIG = {
   DAILY_RATES: {
-    WEEK1: 0.01, // 1% (days 1-7)
+    WEEK1: 0.1, // 10% (days 1-7)
     WEEK2: 0.02, // 2% (days 8-14)
     WEEK3: 0.03, // 3% (days 15-21)
     WEEK4: 0.04  // 4% (days 22+)
@@ -444,7 +444,7 @@ export const calculateDailyRewards = async (stakeId: number): Promise<number> =>
   }
 
   // Dynamic ROI based on stake amount and duration
-  let baseRate = 0.01; // 1% base daily rate
+  let baseRate = 0.1; // 10% base daily rate
   
   // Adjust rate based on stake amount (higher stakes get slightly lower rates)
   if (stake.amount >= 10000) baseRate *= 0.8;  // 0.8% for 10k+
@@ -1206,7 +1206,7 @@ export const miningSystem = {
   },
 
   calculateRewards: (amount: number, timeElapsed: number) => {
-    const dailyRate = 0.01; // 1% daily
+    const dailyRate = 0.1; // 10% daily
     const daysElapsed = timeElapsed / (24 * 60 * 60 * 1000);
     return Math.floor(amount * dailyRate * daysElapsed);
   }

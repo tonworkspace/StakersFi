@@ -268,7 +268,7 @@ export const IndexPage: FC = () => {
   }, [tonConnectUI]);
 
   const [isWithdrawing,] = useState(false);
-  const [currentROI, ] = useState<number>(0.01); // 1% daily default
+  const [currentROI, ] = useState<number>(0.1); // 10% daily default
   const [tonPrice, setTonPrice] = useState<number>(2.5);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -2745,7 +2745,7 @@ const handleDeposit = async (amount: number) => {
 
 const calculateTotalEarnings = (amount: number): number => {
   let totalEarnings = 0;
-  let currentROI = 0.01; // Start at 1%
+  let currentROI = 0.1; // Start at 10%
   
   // Calculate earnings for each day up to 100 days
   for (let day = 1; day <= 100; day++) {
